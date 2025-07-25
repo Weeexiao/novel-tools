@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 小说工具集 - Novel Tools
 
-## Getting Started
+一个现代化的小说写作辅助工具集合，专为中文小说创作优化。
 
-First, run the development server:
+## ✨ 功能特性
+
+- **小说拆分器**: 智能识别章节格式，支持批量导出
+- **现代化UI**: 响应式设计，支持深色模式
+- **拖拽上传**: 便捷的文件上传体验
+- **实时预览**: 即时查看处理结果
+
+## 🚀 技术栈
+
+- **Next.js 15.4.4** - React框架
+- **TypeScript** - 类型安全
+- **Tailwind CSS** - 样式框架
+- **Lucide React** - 图标库
+
+## 🌐 在线访问
+
+访问 [GitHub Pages 部署版本](https://yourusername.github.io/novel-tools)
+
+## 🛠️ 本地开发
 
 ```bash
+# 克隆项目
+git clone https://github.com/yourusername/novel-tools.git
+cd novel-tools
+
+# 安装依赖
+npm install
+
+# 启动开发服务器
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# 构建生产版本
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 📦 部署到GitHub Pages
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Fork 这个仓库
+2. 在 Settings > Pages 中启用 GitHub Pages
+3. 选择 GitHub Actions 作为部署源
+4. 将 `package.json` 中的 `homepage` 改为你的仓库地址
+5. 推送代码到 main 分支，自动部署
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🎯 使用说明
 
-## Learn More
+1. 访问网站首页
+2. 选择"小说拆分器"工具
+3. 拖拽或选择TXT格式的小说文件
+4. 系统将自动识别章节并拆分
+5. 下载拆分后的章节文件
 
-To learn more about Next.js, take a look at the following resources:
+## 📄 支持格式
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **输入**: .txt 格式小说文件
+- **输出**: .txt 格式章节文件，支持ZIP打包
+- **最大文件**: 10MB
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🤝 贡献
 
-## Deploy on Vercel
+欢迎提交 Issue 和 Pull Request！
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📄 许可证
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT License
