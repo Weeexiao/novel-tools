@@ -33,7 +33,7 @@ export default function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-3">
-            <Link href="./" className="flex items-center space-x-3 group">
+            <Link href="/" className="flex items-center space-x-3 group">
               <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg group-hover:shadow-xl transition-all duration-200">
                 <BookOpen className="h-6 w-6 text-white" />
               </div>
@@ -48,14 +48,14 @@ export default function Navigation() {
           
           <nav className="hidden md:flex items-center space-x-8">
             <Link 
-              href="./" 
+              href="/" 
               className="flex items-center space-x-1 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
             >
               <Home className="h-4 w-4" />
               <span>首页</span>
             </Link>
             <Link 
-              href="./tools/novel-splitter" 
+              href="/tools/novel-splitter" 
               className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
             >
               章节拆解

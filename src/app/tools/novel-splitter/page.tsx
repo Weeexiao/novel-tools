@@ -101,68 +101,140 @@ export default function NovelSplitter() {
   const detectChapters = (text: string): Chapter[] => {
     const chapters: Chapter[] = []
     
-    // 过滤广告和无关内容
-    const adKeywords = ['打包下载', '免费下载', '全集电子书', '存储服务', '下载服务']
-    const lines = text.split('\n').filter(line => {
-      const trimmedLine = line.trim()
-      return trimmedLine.length > 0 && 
-             !adKeywords.some(keyword => trimmedLine.includes(keyword)) &&
-             !trimmedLine.match(/^\s*\d+\.?\s*字符\s*$/)
-    }).join('\n')
-
-    // 更精确的章节标题正则表达式
-    const chapterPatterns = [
-      /^\s*第[\d一二三四五六七八九十百千万零]+[章回节篇卷集部]/gm,
-      /^\s*Chapter\s+\d+/gim,
-      /^\s*CHAPTER\s+\d+/gim,
-      /^\s*第\d+[章回节篇卷集部]/gm,
-      /^\s*[\d一二三四五六七八九十百千万]+[章回节篇卷集部]/gm,
-      /^\s*\d+\.\s*[一-龥a-zA-Z][一-龥a-zA-Z0-9\s]*/gm,
-      /^\s*[一-龥]+[章回节篇卷集部][一-龥0-9\s]*/gm
+    // 增强的广告和无关内容过滤
+    const adKeywords = [
+      '打包下载', '免费下载', '全集电子书', '存储服务', '下载服务',
+      '百度网盘', '迅雷下载', '网盘链接', '提取码', '分享密码',
+      '广告', '推广', '赞助', '合作', '联系微信', '联系QQ'
+    ]
+    
+    const lines = text.split('\n')
+    
+    // 智能章节标题识别规则
+    const chapterTitleRules = [
+      // 标准中文章节格式
+      {
+        pattern: /^\s*第[\d零一二三四五六七八九十百千万]+[章回节篇卷集部]/,
+        validator: (title: string) => title.length <= 50 && title.length >= 2,
+        formatter: (title: string) => title.replace(/^\s*第/, '第').trim()
+      },
+      // 数字章节格式
+      {
+        pattern: /^\s*第\d+[章回节篇卷集部]/,
+        validator: (title: string) => title.length <= 50,
+        formatter: (title: string) => title.trim()
+      },
+      // 英文章节格式
+      {
+        pattern: /^\s*Chapter\s+\d+/i,
+        validator: (title: string) => title.length <= 50,
+        formatter: (title: string) => title.trim()
+      },
+      // 简写章节格式
+      {
+        pattern: /^\s*\d+[\.、]\s*[一-龥]/,
+        validator: (title: string) => title.length >= 3 && title.length <= 50,
+        formatter: (title: string) => {
+          const match = title.match(/^(\s*\d+[\.、]\s*)(.+)/)
+          return match ? `第${match[2].trim()}章` : title.trim()
+        }
+      }
     ]
 
-    let bestMatch = null
-    let maxMatches = 0
-
-    // 找到匹配最多的模式
-    for (const pattern of chapterPatterns) {
-      const matches = Array.from(lines.matchAll(pattern))
-      if (matches.length > maxMatches && matches.length > 1) {
-        maxMatches = matches.length
-        bestMatch = { pattern, matches }
+    const potentialChapters: Array<{title: string, startLine: number, content: string}> = []
+    
+    // 扫描所有行寻找章节标题
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim()
+      if (line.length === 0) continue
+      
+      // 检查是否为广告内容
+      if (adKeywords.some(keyword => line.toLowerCase().includes(keyword.toLowerCase()))) {
+        continue
       }
-    }
-
-    if (bestMatch) {
-      const { pattern, matches } = bestMatch
-      for (let i = 0; i < matches.length; i++) {
-        const match = matches[i]
-        const startIndex = match.index!
-        const endIndex = i + 1 < matches.length ? matches[i + 1].index! : lines.length
-        
-        const title = match[0].trim()
-        const content = lines.substring(startIndex, endIndex).trim()
-        const wordCount = content.length
-        
-        // 过滤过短的章节（至少500字符）
-        if (wordCount >= 500) {
-          chapters.push({
-            title: title || `第${i + 1}章`,
-            content,
-            index: chapters.length + 1,
-            wordCount
+      
+      // 检查是否为章节标题
+      for (const rule of chapterTitleRules) {
+        if (rule.pattern.test(line) && rule.validator(line)) {
+          const title = rule.formatter(line)
+          potentialChapters.push({
+            title,
+            startLine: i,
+            content: ''
           })
+          break
         }
       }
     }
 
-    // 如果没有找到章节，将整个文本作为一个章节（如果内容足够长）
-    if (chapters.length === 0 && lines.trim().length >= 1000) {
+    // 提取章节内容
+    for (let i = 0; i < potentialChapters.length; i++) {
+      const chapter = potentialChapters[i]
+      const startLine = chapter.startLine
+      const endLine = i + 1 < potentialChapters.length ? potentialChapters[i + 1].startLine : lines.length
+      
+      // 提取内容，跳过空行和广告
+      let content = ''
+      for (let j = startLine; j < endLine; j++) {
+        const line = lines[j]
+        if (line.trim() && !adKeywords.some(keyword => line.toLowerCase().includes(keyword.toLowerCase()))) {
+          content += line + '\n'
+        }
+      }
+      
+      content = content.trim()
+      const wordCount = content.length
+      
+      // 智能内容质量过滤
+      const hasValidContent = content.length >= 800 && // 至少800字符
+                            !content.match(/^\s*\d+\s*$/) && // 不是纯数字
+                            content.split(/[，。！？]/).length > 5 // 至少有5个句子
+      
+      if (hasValidContent) {
+        // 智能命名优化
+        let finalTitle = chapter.title
+        
+        // 如果标题过于简单，从内容中提取更合适的标题
+        if (finalTitle.length <= 5) {
+          const firstLine = content.split('\n')[0] || ''
+          const meaningfulLine = firstLine.length > 10 ? firstLine.substring(0, 30) + '...' : firstLine
+          finalTitle = `${finalTitle}: ${meaningfulLine}`
+        }
+        
+        // 标准化标题格式
+        finalTitle = finalTitle
+          .replace(/\s+/g, ' ') // 统一空格
+          .replace(/[\r\n]/g, '') // 移除换行
+          .replace(/^第(\d+)章/, '第$1章') // 标准化数字格式
+          .trim()
+        
+        chapters.push({
+          title: finalTitle,
+          content,
+          index: chapters.length + 1,
+          wordCount
+        })
+      }
+    }
+
+    // 如果没有找到有效章节，但内容足够长，创建单个章节
+    const totalContent = lines.filter(line => 
+      line.trim() && 
+      !adKeywords.some(keyword => line.toLowerCase().includes(keyword.toLowerCase()))
+    ).join('\n')
+    
+    if (chapters.length === 0 && totalContent.length >= 2000) {
+      // 尝试从内容中提取标题
+      const firstMeaningfulLine = lines.find(line => 
+        line.trim().length > 10 && 
+        !adKeywords.some(keyword => line.toLowerCase().includes(keyword.toLowerCase()))
+      ) || '全文'
+      
       chapters.push({
-        title: '全文',
-        content: lines.trim(),
+        title: firstMeaningfulLine.substring(0, 50) + (firstMeaningfulLine.length > 50 ? '...' : ''),
+        content: totalContent,
         index: 1,
-        wordCount: lines.length
+        wordCount: totalContent.length
       })
     }
 

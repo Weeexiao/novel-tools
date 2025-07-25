@@ -10,7 +10,7 @@ const tools = [
     name: '小说章节拆解',
     description: '将txt格式的小说按章节拆解成单独的Markdown文档',
     icon: Scissors,
-    href: './tools/novel-splitter',
+    href: '/tools/novel-splitter',
     category: '文本处理',
     color: 'from-blue-500 to-cyan-500',
     gradient: 'bg-gradient-to-br from-blue-500 to-cyan-500'
