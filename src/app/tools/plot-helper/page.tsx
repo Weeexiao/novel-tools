@@ -59,7 +59,14 @@ const tones = [
   { value: 'intellectual', label: '理性', color: 'text-blue-600' }
 ]
 
-const plotTemplates = {
+const plotTemplates: Record<string, {
+  name: string;
+  acts: {
+    title: string;
+    percentage: number;
+    type: 'setup' | 'conflict' | 'climax' | 'resolution';
+  }[];
+}> = {
   'three-act': {
     name: '三幕式结构',
     acts: [
@@ -88,7 +95,7 @@ const plotTemplates = {
       { title: '合：结局', percentage: 25, type: 'resolution' }
     ]
   }
-}
+};
 
 export default function PlotHelper() {
   const [storyElements, setStoryElements] = useState<StoryElement>({
@@ -120,7 +127,7 @@ export default function PlotHelper() {
   interface PlotTemplate {
     acts: {
       title: string;
-      type: string;
+      type: 'setup' | 'conflict' | 'climax' | 'resolution';
       percentage: number;
     }[];
   }
@@ -151,7 +158,7 @@ export default function PlotHelper() {
 
   interface Act {
     title: string;
-    type: string;
+    type: 'setup' | 'conflict' | 'climax' | 'resolution';
     percentage: number;
   }
   const generatePlotPoint = (elements: StoryElement, act: Act, index: number, timing: number): PlotPoint => {
@@ -179,7 +186,7 @@ export default function PlotHelper() {
     climax: GenreContent;
     resolution: GenreContent;
   }
-  const getGenreSpecificContent = (genre: string, type: string) => {
+  const getGenreSpecificContent = (genre: string, type: 'setup' | 'conflict' | 'climax' | 'resolution') => {
     const contentMap: Record<string, GenreTypeContent> = {
       romance: {
         setup: { prefix: '在', action: '遇见了生命中的真爱', emotion: '内心充满了期待和忐忑。' },
