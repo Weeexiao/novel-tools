@@ -10,7 +10,7 @@ const tools = [
     name: '小说章节拆解',
     description: '将txt格式的小说按章节拆解成单独的Markdown文档',
     icon: Scissors,
-    href: '/tools/novel-splitter',
+    href: './tools/novel-splitter',
     category: '文本处理',
     color: 'from-blue-500 to-cyan-500',
     gradient: 'bg-gradient-to-br from-blue-500 to-cyan-500'
@@ -97,48 +97,13 @@ export default function Home() {
       {/* Background Pattern */}
       <div className="fixed inset-0 bg-grid-pattern opacity-5 dark:opacity-10"></div>
       
-      {/* Header */}
-      <header className="relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
-                <Sparkles className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  小说创作工具集
-                </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">AI驱动的创作助手</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="relative hidden md:block">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="搜索工具..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-800 border-0 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 transition-all duration-200"
-                />
-              </div>
-              <button
-                onClick={toggleDarkMode}
-                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
-              >
-                {darkMode ? <Sun className="h-5 w-5 text-yellow-500" /> : <Moon className="h-5 w-5 text-blue-500" />}
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+
 
       {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-blue-900"></div>
-        <div className="absolute inset-0 bg-grid-pattern opacity-5 dark:opacity-10"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-blue-900"></div>
+          <div className="absolute inset-0 bg-grid-pattern opacity-5 dark:opacity-10"></div>
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 mb-6">
               <Sparkles className="h-4 w-4 mr-2" />
