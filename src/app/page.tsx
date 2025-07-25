@@ -20,7 +20,7 @@ const tools = [
     name: '角色生成器',
     description: '创建丰富的人物设定和背景故事',
     icon: Type,
-    href: '#',
+    href: '/tools/character-creator',
     category: '创作辅助',
     color: 'from-purple-500 to-pink-500',
     gradient: 'bg-gradient-to-br from-purple-500 to-pink-500'
@@ -30,7 +30,7 @@ const tools = [
     name: '情节助手',
     description: '协助构建故事情节和发展脉络',
     icon: BookOpen,
-    href: '#',
+    href: '/tools/plot-helper',
     category: '创作辅助',
     color: 'from-green-500 to-emerald-500',
     gradient: 'bg-gradient-to-br from-green-500 to-emerald-500'
@@ -50,7 +50,7 @@ const tools = [
     name: '文风分析',
     description: '分析和模仿不同作者的写作风格',
     icon: Palette,
-    href: '#',
+    href: '/tools/style-guide',
     category: '分析工具',
     color: 'from-pink-500 to-rose-500',
     gradient: 'bg-gradient-to-br from-pink-500 to-rose-500'
