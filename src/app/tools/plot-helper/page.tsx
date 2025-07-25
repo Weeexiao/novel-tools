@@ -117,11 +117,18 @@ export default function PlotHelper() {
     }, 1500)
   }
 
-  const generatePlotFromElements = (elements: StoryElement, template: any, complexity: number, includeSubplots: boolean): PlotStructure => {
+  interface PlotTemplate {
+    acts: {
+      title: string;
+      type: string;
+      percentage: number;
+    }[];
+  }
+  const generatePlotFromElements = (elements: StoryElement, template: PlotTemplate, complexity: number, includeSubplots: boolean): PlotStructure => {
     const acts: PlotPoint[] = []
     let currentPosition = 0
 
-    template.acts.forEach((act: any, index: number) => {
+    template.acts.forEach((act, index: number) => {
       const plotPoint = generatePlotPoint(elements, act, index, currentPosition)
       acts.push(plotPoint)
       currentPosition += act.percentage
@@ -142,7 +149,12 @@ export default function PlotHelper() {
     }
   }
 
-  const generatePlotPoint = (elements: StoryElement, act: any, index: number, timing: number): PlotPoint => {
+  interface Act {
+    title: string;
+    type: string;
+    percentage: number;
+  }
+  const generatePlotPoint = (elements: StoryElement, act: Act, index: number, timing: number): PlotPoint => {
     const genreSpecific = getGenreSpecificContent(elements.genre, act.type)
     
     return {
@@ -156,8 +168,19 @@ export default function PlotHelper() {
     }
   }
 
+  interface GenreContent {
+    prefix: string;
+    action: string;
+    emotion: string;
+  }
+  interface GenreTypeContent {
+    setup: GenreContent;
+    conflict: GenreContent;
+    climax: GenreContent;
+    resolution: GenreContent;
+  }
   const getGenreSpecificContent = (genre: string, type: string) => {
-    const contentMap: Record<string, any> = {
+    const contentMap: Record<string, GenreTypeContent> = {
       romance: {
         setup: { prefix: '在', action: '遇见了生命中的真爱', emotion: '内心充满了期待和忐忑。' },
         conflict: { prefix: '然而', action: '必须面对来自家庭和社会的阻碍', emotion: '爱情面临着严峻的考验。' },

@@ -184,8 +184,15 @@ export default function StyleGuide() {
     return Math.min(1, count * 0.05)
   }
 
-  const generateIssues = (text: string, readability: number, avgWords: number): any[] => {
-    const issues = []
+interface Issue {
+  type: string;
+  severity: 'low' | 'medium' | 'high';
+  message: string;
+  suggestion: string;
+  examples: string[];
+}
+  const generateIssues = (text: string, readability: number, avgWords: number): Issue[] => {
+    const issues: Issue[] = []
     
     if (avgWords > 25) {
       issues.push({
@@ -220,10 +227,15 @@ export default function StyleGuide() {
     return issues
   }
 
-  const generateImprovements = (text: string, issues: any[]): any[] => {
+  interface Improvement {
+    category: string;
+    original: string;
+    improved: string;
+    explanation: string;
+  }
+  const generateImprovements = (text: string, issues: Issue[]): Improvement[] => {
     const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0)
-    if (sentences.length === 0) return []
-    
+    if (sentences.length === 0) return [];
     return [
       {
         category: '开头',
@@ -243,7 +255,7 @@ export default function StyleGuide() {
         improved: '接着...随后...最终...',
         explanation: '使用多样化的连接词，避免重复'
       }
-    ]
+    ];
   }
 
   const getReadabilityLevel = (score: number): string => {
