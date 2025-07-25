@@ -110,32 +110,55 @@ export default function NovelSplitter() {
     
     const lines = text.split('\n')
     
-    // 智能章节标题识别规则
+    // 智能章节标题识别规则 - 严格验证
     const chapterTitleRules = [
-      // 标准中文章节格式
+      // 标准中文章节格式 - 严格匹配
       {
-        pattern: /^\s*第[\d零一二三四五六七八九十百千万]+[章回节篇卷集部]/,
-        validator: (title: string) => title.length <= 50 && title.length >= 2,
-        formatter: (title: string) => title.replace(/^\s*第/, '第').trim()
+        pattern: /^\s*第[\d零一二三四五六七八九十百千万]+[章回节篇卷集部]\s*[\u4e00-\u9fa5\w\s]{1,20}$/,
+        validator: (title: string) => {
+          // 检查是否为完整的章节标题格式
+          const hasValidPrefix = /^第[\d零一二三四五六七八九十百千万]+[章回节篇卷集部]/.test(title.trim())
+          const hasValidLength = title.length >= 3 && title.length <= 25
+          const isNotSentence = !/[，。！？；：,.!?;:]/.test(title) // 不包含句子标点
+          const hasChineseChars = /[\u4e00-\u9fa5]/.test(title) // 包含中文字符
+          return hasValidPrefix && hasValidLength && isNotSentence && hasChineseChars
+        },
+        formatter: (title: string) => title.trim().replace(/\s+/g, ' ')
       },
-      // 数字章节格式
+      // 数字章节格式 - 严格匹配
       {
-        pattern: /^\s*第\d+[章回节篇卷集部]/,
-        validator: (title: string) => title.length <= 50,
+        pattern: /^\s*第\d+[章回节篇卷集部]\s*[\u4e00-\u9fa5\w\s]{1,20}$/,
+        validator: (title: string) => {
+          const hasValidPrefix = /^第\d+[章回节篇卷集部]/.test(title.trim())
+          const hasValidLength = title.length >= 3 && title.length <= 25
+          const isNotSentence = !/[，。！？；：,.!?;:]/.test(title)
+          return hasValidPrefix && hasValidLength && isNotSentence
+        },
         formatter: (title: string) => title.trim()
       },
-      // 英文章节格式
+      // 英文章节格式 - 严格匹配
       {
-        pattern: /^\s*Chapter\s+\d+/i,
-        validator: (title: string) => title.length <= 50,
+        pattern: /^\s*Chapter\s+\d+\s*[\u4e00-\u9fa5\w\s]{0,20}$/i,
+        validator: (title: string) => {
+          const hasValidPrefix = /^Chapter\s+\d+/i.test(title.trim())
+          const hasValidLength = title.length >= 8 && title.length <= 30
+          const isNotSentence = !/[，。！？；：,.!?;:]/.test(title)
+          return hasValidPrefix && hasValidLength && isNotSentence
+        },
         formatter: (title: string) => title.trim()
       },
-      // 简写章节格式
+      // 简写章节格式 - 严格匹配
       {
-        pattern: /^\s*\d+[\.、]\s*[一-龥]/,
-        validator: (title: string) => title.length >= 3 && title.length <= 50,
+        pattern: /^\s*\d+[\.、]\s*[\u4e00-\u9fa5]{2,15}$/,
+        validator: (title: string) => {
+          const hasValidPrefix = /^\d+[\.、]/.test(title.trim())
+          const hasValidLength = title.length >= 4 && title.length <= 20
+          const isNotSentence = !/[，。！？；：,.!?;:]/.test(title)
+          const hasChineseChars = /[\u4e00-\u9fa9]/.test(title.replace(/^\d+[\.、]\s*/, ''))
+          return hasValidPrefix && hasValidLength && isNotSentence && hasChineseChars
+        },
         formatter: (title: string) => {
-          const match = title.match(/^(\s*\d+[\.、]\s*)(.+)/)
+          const match = title.match(/^(\s*\d+[\.、]\s*)([\u4e00-\u9fa5]+)/)
           return match ? `第${match[2].trim()}章` : title.trim()
         }
       }
@@ -157,11 +180,47 @@ export default function NovelSplitter() {
       for (const rule of chapterTitleRules) {
         if (rule.pattern.test(line) && rule.validator(line)) {
           const title = rule.formatter(line)
-          potentialChapters.push({
-            title,
-            startLine: i,
-            content: ''
-          })
+          
+          // 智能验证：检查是否为有效的章节标题
+          const isValidChapterTitle = (() => {
+            const cleanTitle = title.trim()
+            
+            // 排除明显的正文片段
+            const forbiddenPatterns = [
+              /第[她他它你我一二三四五六七八九十百千万]+[章回节篇卷集部]/, // 错误的中文字符
+              /第.*[需要应该必须会能可以]/, // 包含动作词汇
+              /.*[较为非常特别十分].*[详细具体完整]/, // 描述性词汇组合
+              /.*[计划方案措施方法]/, // 功能性词汇
+              /.*[因为所以但是然而]/, // 连接词
+            ]
+            
+            // 检查是否为完整的章节标题结构
+            const isProperStructure = /^第[\d零一二三四五六七八九十百千万]+[章回节篇卷集部]/.test(cleanTitle) ||
+                                    /^Chapter\s+\d+/i.test(cleanTitle) ||
+                                    /^\d+[\.、][\u4e00-\u9fa5]{1,10}$/.test(cleanTitle)
+            
+            // 检查标题长度合理性
+            const hasReasonableLength = cleanTitle.length >= 2 && cleanTitle.length <= 15
+            
+            // 检查是否包含句子特征
+            const hasNoSentenceFeatures = !/[，。！？；：,.!?;:]/.test(cleanTitle)
+            
+            // 检查是否包含常见章节标题词汇
+            const hasChapterKeywords = /[章回节篇卷集部]/.test(cleanTitle)
+            
+            // 检查是否为正文片段
+            const isNotContentFragment = !forbiddenPatterns.some(pattern => pattern.test(cleanTitle))
+            
+            return isProperStructure && hasReasonableLength && hasNoSentenceFeatures && hasChapterKeywords && isNotContentFragment
+          })()
+          
+          if (isValidChapterTitle) {
+            potentialChapters.push({
+              title,
+              startLine: i,
+              content: ''
+            })
+          }
           break
         }
       }
