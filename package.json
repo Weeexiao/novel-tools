@@ -2,7 +2,7 @@
   "name": "novel-tools",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://github.com/Weeexiao/novel-tools.git",
+  "homepage": "https://Weeexiao.github.io/novel-tools",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
