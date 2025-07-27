@@ -1,15 +1,17 @@
 import type { NextConfig } from "next";
 
-const isDev = process.env.NODE_ENV === 'development';
-
 const nextConfig: NextConfig = {
-  output: isDev ? undefined : 'export',
-  basePath: isDev ? '' : '/novel-tools',
-  assetPrefix: isDev ? '' : '/novel-tools/',
+  output: 'export',
+  distDir: 'out',
   images: {
     unoptimized: true,
   },
-  trailingSlash: true,
+  // Optional: Change links `/me` -> `/me/` and emit `/me.html` -> `/me/index.html`
+  // trailingSlash: true,
+  // Optional: Prevent automatic `/me` -> `/me/`, instead preserve `href`
+  // skipTrailingSlashRedirect: true,
+  // Optional: Change the output directory `out` -> `dist`
+  // distDir: 'dist',
 };
 
 export default nextConfig;

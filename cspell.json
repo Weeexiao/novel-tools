@@ -1,0 +1,22 @@
+{
+  "version": "0.2",
+  "language": "en, zh",
+  "words": [
+    "AIAPI",
+    "siliconflow",
+    "Qwen",
+    "kimi",
+    "Kimi",
+    "deepseek",
+    "scifi",
+    "kishotenketsu",
+    "turbopack",
+    "nojekyll"
+  ],
+  "ignorePaths": [
+    "node_modules/**",
+    "dist/**",
+    "build/**",
+    ".next/**"
+  ]
+}

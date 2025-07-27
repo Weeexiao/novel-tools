@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,7 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
-import { BookOpen, Download, RefreshCw, Sparkles, Target, Drama, Clock } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { callAIAPI, getCurrentModelConfig } from '@/lib/ai-config'
+import { BookOpen, Download, RefreshCw, Sparkles, Target, Drama, Clock, AlertCircle } from 'lucide-react'
 
 interface StoryElement {
   protagonist: string
@@ -112,8 +114,170 @@ export default function PlotHelper() {
   const [selectedTemplate, setSelectedTemplate] = useState('three-act')
   const [complexity, setComplexity] = useState([5])
   const [includeSubplots, setIncludeSubplots] = useState(false)
+  const [error, setError] = useState('')
+  const [aiEnabled, setAiEnabled] = useState(false)
 
-  const generatePlot = async () => {
+  // 检查AI配置是否可用
+  useEffect(() => {
+    const { model } = getCurrentModelConfig()
+    setAiEnabled(!!model)
+  }, [])
+
+  const generateStoryElementsWithAI = async () => {
+    if (!storyElements.protagonist.trim()) {
+      setError('请输入主角名称')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
+    try {
+      const prompt = `基于以下信息创建故事要素：
+      
+主角：${storyElements.protagonist}
+题材：${genres.find(g => g.value === storyElements.genre)?.label || storyElements.genre}
+基调：${tones.find(t => t.value === storyElements.tone)?.label || storyElements.tone}
+
+请提供：
+1. 主角目标：主角想要实现的目标
+2. 主要障碍：主角面临的主要障碍或冲突
+3. 故事背景：故事发生的时间和地点背景
+
+请以JSON格式返回结果，严格按照以下格式：
+{
+  "goal": "主角目标",
+  "obstacle": "主要障碍",
+  "setting": "故事背景"
+}`
+
+      const response = await callAIAPI(prompt, '你是一位专业的小说情节设计师，擅长构建引人入胜的故事。')
+      const elements = JSON.parse(response)
+      
+      setStoryElements(prev => ({
+        ...prev,
+        goal: elements.goal,
+        obstacle: elements.obstacle,
+        setting: elements.setting
+      }))
+    } catch (err) {
+      console.error('生成故事要素时出错:', err)
+      setError('生成故事要素失败：' + (err instanceof Error ? err.message : '未知错误'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const generateStoryElementsLocally = () => {
+    if (!storyElements.protagonist.trim()) {
+      setError('请输入主角名称')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
+    // 模拟AI生成
+    setTimeout(() => {
+      const goals = [
+        '寻找失落的宝藏',
+        '拯救心爱的人',
+        '成为武林盟主',
+        '解开家族秘密',
+        '阻止世界末日',
+        '赢得比赛冠军'
+      ]
+
+      const obstacles = [
+        '强大的敌人阻挠',
+        '时间紧迫',
+        '缺乏必要的资源',
+        '内心的恐惧和怀疑',
+        '朋友的背叛',
+        '自然灾难的威胁'
+      ]
+
+      const settings = [
+        '现代都市',
+        '古代江湖',
+        '未来世界',
+        '魔法王国',
+        '荒野边境',
+        '神秘岛屿'
+      ]
+
+      setStoryElements(prev => ({
+        ...prev,
+        goal: goals[Math.floor(Math.random() * goals.length)],
+        obstacle: obstacles[Math.floor(Math.random() * obstacles.length)],
+        setting: settings[Math.floor(Math.random() * settings.length)]
+      }))
+
+      setLoading(false)
+    }, 1000)
+  }
+
+  const generateStoryElements = () => {
+    if (aiEnabled) {
+      generateStoryElementsWithAI()
+    } else {
+      generateStoryElementsLocally()
+    }
+  }
+
+  const generatePlotWithAI = async () => {
+    setLoading(true)
+    setError('')
+
+    try {
+      const template = plotTemplates[selectedTemplate as keyof typeof plotTemplates]
+      
+      const prompt = `基于以下故事要素创建情节结构：
+      
+故事要素：
+- 主角：${storyElements.protagonist}
+- 目标：${storyElements.goal}
+- 障碍：${storyElements.obstacle}
+- 背景：${storyElements.setting}
+- 题材：${genres.find(g => g.value === storyElements.genre)?.label || storyElements.genre}
+- 基调：${tones.find(t => t.value === storyElements.tone)?.label || storyElements.tone}
+
+结构模板：${template.name}
+复杂度：${complexity[0]}/10
+${includeSubplots ? '包含子情节' : '不包含子情节'}
+
+请生成完整的情节结构，以JSON格式返回，严格按照以下格式：
+{
+  "title": "故事标题",
+  "description": "故事简介",
+  "acts": [
+    {
+      "id": "act-1",
+      "title": "情节标题",
+      "description": "情节描述",
+      "act": 1,
+      "type": "setup|conflict|climax|resolution",
+      "emotionalImpact": 1-10的数字,
+      "timing": 0-100的数字
+    }
+  ],
+  "genre": "${storyElements.genre}",
+  "tone": "${storyElements.tone}"
+}`
+
+      const response = await callAIAPI(prompt, '你是一位专业的小说情节设计师，擅长构建引人入胜的故事结构。')
+      const plot = JSON.parse(response)
+      
+      setPlotStructure(plot)
+    } catch (err) {
+      console.error('生成情节时出错:', err)
+      setError('生成情节失败：' + (err instanceof Error ? err.message : '未知错误'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const generatePlotLocally = () => {
     setLoading(true)
     
     setTimeout(() => {
@@ -122,6 +286,14 @@ export default function PlotHelper() {
       setPlotStructure(plot)
       setLoading(false)
     }, 1500)
+  }
+
+  const generatePlot = () => {
+    if (aiEnabled) {
+      generatePlotWithAI()
+    } else {
+      generatePlotLocally()
+    }
   }
 
   interface PlotTemplate {
@@ -287,62 +459,87 @@ ${index + 1}. ${act.title}
           </p>
         </div>
 
+        {!aiEnabled && (
+          <Alert variant="default" className="mb-6 bg-white dark:bg-gray-800 dark:border-gray-700">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="dark:text-gray-300">
+              检测到您尚未配置AI模型，当前为演示模式。如需获得更智能的情节构建体验，请前往
+              <a href="/tools/settings" className="text-blue-600 hover:underline dark:text-blue-400">设置页面</a>
+              配置AI模型。
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert variant="destructive" className="mb-6 bg-white dark:bg-gray-800 dark:border-gray-700">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="dark:text-gray-300">{error}</AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid lg:grid-cols-3 gap-8">
           {/* 设置面板 */}
           <div className="lg:col-span-1 space-y-6">
-            <Card>
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm dark:shadow-gray-900/20">
               <CardHeader>
-                <CardTitle>故事设定</CardTitle>
-                <CardDescription>输入你的故事要素</CardDescription>
+                <CardTitle className="dark:text-white">故事设定</CardTitle>
+                <CardDescription className="dark:text-gray-300">输入你的故事要素</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>主角姓名</Label>
+                  <Label className="dark:text-gray-200">主角姓名</Label>
                   <Input
                     placeholder="例如：李小明"
                     value={storyElements.protagonist}
                     onChange={(e) => setStoryElements(prev => ({ ...prev, protagonist: e.target.value }))}
+                    className="dark:bg-gray-700/50 dark:text-white dark:border-gray-600/50 backdrop-blur-xl"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>故事目标</Label>
+                  <Label className="dark:text-gray-200">故事目标</Label>
                   <Input
                     placeholder="例如：成为武林盟主"
                     value={storyElements.goal}
                     onChange={(e) => setStoryElements(prev => ({ ...prev, goal: e.target.value }))}
+                    className="dark:bg-gray-700/50 dark:text-white dark:border-gray-600/50 backdrop-blur-xl"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>主要障碍</Label>
+                  <Label className="dark:text-gray-200">主要障碍</Label>
                   <Input
                     placeholder="例如：强大的敌人"
                     value={storyElements.obstacle}
                     onChange={(e) => setStoryElements(prev => ({ ...prev, obstacle: e.target.value }))}
+                    className="dark:bg-gray-700/50 dark:text-white dark:border-gray-600/50 backdrop-blur-xl"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>故事背景</Label>
+                  <Label className="dark:text-gray-200">故事背景</Label>
                   <Textarea
                     placeholder="例如：现代都市"
                     value={storyElements.setting}
                     onChange={(e) => setStoryElements(prev => ({ ...prev, setting: e.target.value }))}
-                    className="min-h-[80px]"
+                    className="min-h-[80px] dark:bg-gray-700/50 dark:text-white dark:border-gray-600/50 backdrop-blur-xl"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>故事类型</Label>
+                    <Label className="dark:text-gray-200">故事类型</Label>
                     <Select value={storyElements.genre} onValueChange={(value) => setStoryElements(prev => ({ ...prev, genre: value }))}>
-                      <SelectTrigger>
+                      <SelectTrigger className="dark:bg-gray-700/50 dark:text-white dark:border-gray-600/50 backdrop-blur-xl">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="dark:bg-gray-700/80 dark:border-gray-600/50 dark:backdrop-blur-xl">
                         {genres.map(genre => (
-                          <SelectItem key={genre.value} value={genre.value}>
+                          <SelectItem 
+                            key={genre.value} 
+                            value={genre.value}
+                            className="dark:text-white dark:hover:bg-gray-600/50"
+                          >
                             {genre.icon} {genre.label}
                           </SelectItem>
                         ))}
@@ -351,14 +548,18 @@ ${index + 1}. ${act.title}
                   </div>
 
                   <div className="space-y-2">
-                    <Label>故事基调</Label>
+                    <Label className="dark:text-gray-200">故事基调</Label>
                     <Select value={storyElements.tone} onValueChange={(value) => setStoryElements(prev => ({ ...prev, tone: value }))}>
-                      <SelectTrigger>
+                      <SelectTrigger className="dark:bg-gray-700/50 dark:text-white dark:border-gray-600/50 backdrop-blur-xl">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="dark:bg-gray-700/80 dark:border-gray-600/50 dark:backdrop-blur-xl">
                         {tones.map(tone => (
-                          <SelectItem key={tone.value} value={tone.value}>
+                          <SelectItem 
+                            key={tone.value} 
+                            value={tone.value}
+                            className="dark:text-white dark:hover:bg-gray-600/50"
+                          >
                             <span className={tone.color}>{tone.label}</span>
                           </SelectItem>
                         ))}
@@ -366,31 +567,55 @@ ${index + 1}. ${act.title}
                     </Select>
                   </div>
                 </div>
+
+                <Button 
+                  onClick={generateStoryElements}
+                  disabled={loading || !storyElements.protagonist.trim()}
+                  className="w-full"
+                  variant="secondary"
+                >
+                  {loading ? '生成中...' : <><Sparkles className="w-4 h-4 mr-2" />生成故事要素</>}
+                </Button>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm dark:shadow-gray-900/20">
               <CardHeader>
-                <CardTitle>结构设置</CardTitle>
-                <CardDescription>选择情节结构</CardDescription>
+                <CardTitle className="dark:text-white">结构设置</CardTitle>
+                <CardDescription className="dark:text-gray-300">选择情节结构</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>结构模板</Label>
+                  <Label className="dark:text-gray-200">结构模板</Label>
                   <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                    <SelectTrigger>
+                    <SelectTrigger className="dark:bg-gray-700/50 dark:text-white dark:border-gray-600/50 backdrop-blur-xl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="three-act">三幕式结构</SelectItem>
-                      <SelectItem value="hero-journey">英雄旅程</SelectItem>
-                      <SelectItem value="kishotenketsu">起承转合</SelectItem>
+                    <SelectContent className="dark:bg-gray-700/80 dark:border-gray-600/50 dark:backdrop-blur-xl">
+                      <SelectItem 
+                        value="three-act"
+                        className="dark:text-white dark:hover:bg-gray-600/50"
+                      >
+                        三幕式结构
+                      </SelectItem>
+                      <SelectItem 
+                        value="hero-journey"
+                        className="dark:text-white dark:hover:bg-gray-600/50"
+                      >
+                        英雄旅程
+                      </SelectItem>
+                      <SelectItem 
+                        value="kishotenketsu"
+                        className="dark:text-white dark:hover:bg-gray-600/50"
+                      >
+                        起承转合
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>复杂度：{complexity[0]}</Label>
+                  <Label className="dark:text-gray-200">复杂度：{complexity[0]}</Label>
                   <Slider
                     value={complexity}
                     onValueChange={setComplexity}
@@ -401,7 +626,7 @@ ${index + 1}. ${act.title}
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <Label>包含子情节</Label>
+                  <Label className="dark:text-gray-200">包含子情节</Label>
                   <Switch
                     checked={includeSubplots}
                     onCheckedChange={setIncludeSubplots}
@@ -422,18 +647,19 @@ ${index + 1}. ${act.title}
           {/* 情节展示 */}
           <div className="lg:col-span-2">
             {plotStructure ? (
-              <Card>
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm dark:shadow-gray-900/20">
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle>{plotStructure.title}</CardTitle>
-                      <CardDescription>{plotStructure.description}</CardDescription>
+                      <CardTitle className="dark:text-white">{plotStructure.title}</CardTitle>
+                      <CardDescription className="dark:text-gray-300">{plotStructure.description}</CardDescription>
                     </div>
                     <div className="flex gap-2">
                       <Button 
                         onClick={downloadPlot}
                         size="sm"
                         variant="outline"
+                        className="dark:border-gray-600 dark:text-white dark:hover:bg-gray-700/50"
                       >
                         <Download className="w-4 h-4 mr-2" />
                         下载
@@ -442,6 +668,7 @@ ${index + 1}. ${act.title}
                         onClick={generatePlot}
                         size="sm"
                         variant="ghost"
+                        className="dark:text-white dark:hover:bg-gray-700/50"
                       >
                         <RefreshCw className="w-4 h-4 mr-2" />
                         重新生成
@@ -453,23 +680,25 @@ ${index + 1}. ${act.title}
                   <div className="space-y-6">
                     {/* 时间线 */}
                     <div className="relative">
-                      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-indigo-500 to-purple-500"></div>
+                      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-indigo-500 to-purple-500 dark:from-indigo-600 dark:to-purple-600"></div>
                       {plotStructure.acts.map((act, index) => (
                         <div key={act.id} className="relative flex items-start mb-8 last:mb-0">
-                          <div className={`absolute left-2 w-4 h-4 rounded-full border-2 border-white ${
+                          <div className={`absolute left-2 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 ${
                             act.type === 'setup' ? 'bg-green-500' :
                             act.type === 'conflict' ? 'bg-yellow-500' :
                             act.type === 'climax' ? 'bg-red-500' : 'bg-blue-500'
                           }`}></div>
                           <div className="ml-12 flex-1">
                             <div className="flex items-center justify-between mb-2">
-                              <h4 className="font-semibold text-lg">{act.title}</h4>
+                              <h4 className="font-semibold text-lg dark:text-white">{act.title}</h4>
                               <div className="flex items-center gap-2">
-                                <Badge variant="outline">{act.timing}%</Badge>
+                                <Badge variant="outline" className="dark:border-gray-600 dark:text-gray-300">
+                                  {act.timing}%
+                                </Badge>
                                 <Badge className={`${
-                                  act.emotionalImpact >= 8 ? 'bg-red-100 text-red-800' :
-                                  act.emotionalImpact >= 6 ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-green-100 text-green-800'
+                                  act.emotionalImpact >= 8 ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200' :
+                                  act.emotionalImpact >= 6 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200' :
+                                  'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
                                 }`}>
                                   <Drama className="w-3 h-3 mr-1" />
                                   {act.emotionalImpact}/10
@@ -485,27 +714,31 @@ ${index + 1}. ${act.title}
                     </div>
 
                     {/* 故事标签 */}
-                    <div className="flex gap-2 pt-4 border-t">
-                      <Badge variant="secondary">
+                    <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <Badge variant="secondary" className="dark:bg-gray-700/50 dark:text-gray-200 backdrop-blur-xl">
                         {genres.find(g => g.value === plotStructure.genre)?.icon} {genres.find(g => g.value === plotStructure.genre)?.label}
                       </Badge>
-                      <Badge variant="secondary">
+                      <Badge variant="secondary" className="dark:bg-gray-700/50 dark:text-gray-200 backdrop-blur-xl">
                         {tones.find(t => t.value === plotStructure.tone)?.label}
                       </Badge>
-                      {includeSubplots && <Badge variant="outline">含子情节</Badge>}
+                      {includeSubplots && (
+                        <Badge variant="outline" className="dark:border-gray-600 dark:text-gray-300">
+                          含子情节
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </CardContent>
               </Card>
             ) : (
-              <Card>
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm dark:shadow-gray-900/20">
                 <CardContent className="flex flex-col items-center justify-center py-20 text-center">
                   <BookOpen className="w-16 h-16 text-gray-400 mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">开始构建你的故事</h3>
+                  <h3 className="text-xl font-semibold mb-2 dark:text-white">开始构建你的故事</h3>
                   <p className="text-gray-600 dark:text-gray-300 mb-4">
                     在左侧输入故事要素，选择结构模板，然后点击生成按钮
                   </p>
-                  <div className="grid grid-cols-2 gap-4 text-sm text-gray-500">
+                  <div className="grid grid-cols-2 gap-4 text-sm text-gray-500 dark:text-gray-400">
                     <div className="text-center">
                       <Target className="w-6 h-6 mx-auto mb-1" />
                       <p>明确目标</p>

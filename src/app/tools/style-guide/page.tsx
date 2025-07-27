@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { callAIAPI, getCurrentModelConfig } from '@/lib/ai-config'
 import { Book, Download, RefreshCw, Sparkles, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react'
 
 interface StyleAnalysis {
@@ -68,8 +69,87 @@ export default function StyleGuide() {
   const [metrics, setMetrics] = useState<WritingMetrics | null>(null)
   const [loading, setLoading] = useState(false)
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const [aiEnabled, setAiEnabled] = useState(false)
 
-  const analyzeText = async () => {
+  // 检查AI配置是否可用
+  useEffect(() => {
+    const { model } = getCurrentModelConfig()
+    setAiEnabled(!!model)
+  }, [])
+
+  const analyzeTextWithAI = async () => {
+    if (!text.trim()) return
+    
+    setLoading(true)
+    setError('')
+
+    try {
+      const prompt = `请分析以下中文文本的写作风格，并提供详细分析报告：
+
+文本内容：
+"${text}"
+
+请以JSON格式返回分析结果，严格按照以下格式：
+{
+  "readability": {
+    "score": 0-100的数字,
+    "level": "可读性等级（非常容易/容易/中等/较难/困难）",
+    "sentences": 句子数量,
+    "avgWordsPerSentence": 平均每句词数,
+    "avgSyllablesPerWord": 平均每词音节数
+  },
+  "tone": {
+    "primary": "主要情感基调",
+    "confidence": 0-100的置信度,
+    "emotions": [
+      {
+        "emotion": "情感类型",
+        "score": 得分
+      }
+    ]
+  },
+  "style": {
+    "voice": "语言风格（正式/中性/口语）",
+    "complexity": "复杂度（简单/中等/复杂）",
+    "pacing": "节奏（缓慢/中等/快速）",
+    "dialogueRatio": 对话比例0-100,
+    "descriptionRatio": 描述比例0-100
+  },
+  "issues": [
+    {
+      "type": "问题类型",
+      "severity": "low|medium|high",
+      "message": "问题描述",
+      "suggestion": "改进建议",
+      "examples": ["示例"]
+    }
+  ],
+  "improvements": [
+    {
+      "category": "改进类别",
+      "original": "原文示例",
+      "improved": "改进示例",
+      "explanation": "改进说明"
+    }
+  ]
+}`
+
+      const response = await callAIAPI(prompt, '你是一位专业的中文写作风格分析师，擅长分析文本风格并提供改进建议。')
+      const analysisResult = JSON.parse(response)
+      const metricsResult = calculateMetrics(text)
+      
+      setAnalysis(analysisResult)
+      setMetrics(metricsResult)
+    } catch (err) {
+      console.error('分析文本时出错:', err)
+      setError('分析文本失败：' + (err instanceof Error ? err.message : '未知错误'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const analyzeTextLocally = async () => {
     if (!text.trim()) return
     
     setLoading(true)
@@ -81,6 +161,14 @@ export default function StyleGuide() {
       setMetrics(metricsResult)
       setLoading(false)
     }, 1000)
+  }
+
+  const analyzeText = () => {
+    if (aiEnabled) {
+      analyzeTextWithAI()
+    } else {
+      analyzeTextLocally()
+    }
   }
 
   const performStyleAnalysis = (text: string): StyleAnalysis => {
@@ -330,6 +418,24 @@ ${analysis.issues.map(issue => `- ${issue.message}：${issue.suggestion}`).join(
             分析文本风格，提供写作改进建议
           </p>
         </div>
+
+        {!aiEnabled && (
+          <Alert variant="default" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              检测到您尚未配置AI模型，当前为演示模式。如需获得更精准的文风分析，请前往
+              <a href="/tools/settings" className="text-blue-600 hover:underline">设置页面</a>
+              配置AI模型。
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* 文本输入区 */}

@@ -9,7 +9,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Copy, Download, RefreshCw, User } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { callAIAPI, getCurrentModelConfig } from '@/lib/ai-config'
+import { Copy, Download, RefreshCw, User, AlertCircle, Sparkles } from 'lucide-react'
 
 interface Character {
   name: string
@@ -39,8 +41,85 @@ export default function CharacterCreator() {
   const [character, setCharacter] = useState<Character | null>(null)
   const [loading, setLoading] = useState(false)
   const [customPrompt, setCustomPrompt] = useState('')
+  const [error, setError] = useState('')
+  const [aiEnabled, setAiEnabled] = useState(false)
 
-  const generateCharacter = async (type: 'random' | 'custom') => {
+  // 检查AI配置是否可用
+  useState(() => {
+    const { model } = getCurrentModelConfig()
+    setAiEnabled(!!model)
+  })
+
+  const generateName = () => {
+    const surnames = ['李', '王', '张', '刘', '陈', '杨', '赵', '黄', '周', '吴']
+    const names = ['伟', '芳', '娜', '敏', '静', '丽', '强', '磊', '军', '洋', '勇', '艳', '杰', '娟', '涛', '明', '超', '秀英', '霞', '平']
+    return surnames[Math.floor(Math.random() * surnames.length)] + names[Math.floor(Math.random() * names.length)]
+  }
+
+  const generateCharacterWithAI = async (type: 'random' | 'custom') => {
+    setLoading(true)
+    setError('')
+    
+    try {
+      let prompt = ''
+      
+      if (type === 'random') {
+        prompt = `请创建一个随机的小说角色，包含以下信息：
+        1. 姓名：一个中文姓名
+        2. 年龄：18-80岁之间
+        3. 性别：男或女
+        4. 职业：从以下选项中选择：${occupations.join('、')}
+        5. 性格特征：从以下选项中选择3-5个：${personalityTraits.join('、')}
+        6. 背景故事：200字左右的简短背景故事
+        7. 外貌描述：100字左右的外貌特征
+        8. 动机：该角色的目标或动机
+        9. 冲突：该角色面临的主要冲突或挑战
+        10. 人际关系：与故事中其他人物的关系
+        
+        请以JSON格式返回结果，严格按照以下格式：
+        {
+          "name": "姓名",
+          "age": 年龄,
+          "gender": "性别",
+          "occupation": "职业",
+          "personality": ["特征1", "特征2", "..."],
+          "background": "背景故事",
+          "appearance": "外貌描述",
+          "motivation": "角色动机",
+          "conflict": "主要冲突",
+          "relationships": "人际关系"
+        }`
+      } else {
+        prompt = `根据以下要求创建小说角色：${customPrompt}
+        
+        请以JSON格式返回结果，严格按照以下格式：
+        {
+          "name": "姓名",
+          "age": 年龄,
+          "gender": "性别",
+          "occupation": "职业",
+          "personality": ["特征1", "特征2", "..."],
+          "background": "背景故事",
+          "appearance": "外貌描述",
+          "motivation": "角色动机",
+          "conflict": "主要冲突",
+          "relationships": "人际关系"
+        }`
+      }
+
+      const response = await callAIAPI(prompt, '你是一位专业的小说角色设计师，擅长创建丰富、立体的小说角色。')
+      const generatedCharacter = JSON.parse(response)
+      
+      setCharacter(generatedCharacter)
+    } catch (err) {
+      console.error('生成角色时出错:', err)
+      setError('生成角色失败：' + (err instanceof Error ? err.message : '未知错误'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const generateCharacterLocally = async (type: 'random' | 'custom') => {
     setLoading(true)
     
     // 模拟AI生成过程
@@ -50,17 +129,14 @@ export default function CharacterCreator() {
         age: Math.floor(Math.random() * 50) + 18,
         gender: Math.random() > 0.5 ? '男' : '女',
         occupation: occupations[Math.floor(Math.random() * occupations.length)],
-        personality: getRandomPersonality(3),
-        background: generateBackground(),
-        appearance: generateAppearance(),
-        motivation: generateMotivation(),
-        conflict: generateConflict(),
-        relationships: generateRelationships()
-      }
-      
-      if (type === 'custom' && customPrompt) {
-        // 根据自定义提示调整角色
-        newCharacter.background = `根据提示"${customPrompt}"：${newCharacter.background}`
+        personality: personalityTraits
+          .sort(() => 0.5 - Math.random())
+          .slice(0, Math.floor(Math.random() * 3) + 3),
+        background: '这是一个随机生成的角色背景故事。他/她有着丰富的经历和独特的个性。',
+        appearance: '这是角色的外貌描述，包括身高、体型、面部特征等。',
+        motivation: '角色的主要动机和目标。',
+        conflict: '角色面临的主要冲突和挑战。',
+        relationships: '角色与其他人物的关系网络。'
       }
       
       setCharacter(newCharacter)
@@ -68,239 +144,254 @@ export default function CharacterCreator() {
     }, 1000)
   }
 
-  const generateName = () => {
-    const surnames = ['张', '王', '李', '赵', '刘', '陈', '杨', '黄', '周', '吴', '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗']
-    const names = ['明', '华', '强', '军', '勇', '磊', '涛', '超', '伟', '刚', '芳', '娜', '秀英', '敏', '静', '丽', '艳', '娟', '桂英', '萍']
-    return surnames[Math.floor(Math.random() * surnames.length)] + names[Math.floor(Math.random() * names.length)]
-  }
-
-  const getRandomPersonality = (count: number) => {
-    const shuffled = [...personalityTraits].sort(() => 0.5 - Math.random())
-    return shuffled.slice(0, count)
-  }
-
-  const generateBackground = () => {
-    const backgrounds = [
-      '出生在一个普通的工薪家庭，从小就展现出过人的天赋。',
-      '来自农村的朴实家庭，靠自己的努力改变了命运。',
-      '家境优渥，接受了良好的教育，但内心渴望真正的挑战。',
-      '经历过家庭变故，早早学会了独立和坚强。',
-      '在海外长大，带着东西方文化的融合视角看待世界。',
-      '曾经是问题少年，后来找到了人生的方向。'
-    ]
-    return backgrounds[Math.floor(Math.random() * backgrounds.length)]
-  }
-
-  const generateAppearance = () => {
-    const appearances = [
-      '中等身材，面容清秀，眼神中透露着智慧的光芒。',
-      '高挑的身材，轮廓分明的五官，给人一种可靠的感觉。',
-      '小巧玲珑，笑容温暖，让人一见就感到亲切。',
-      '身材魁梧，浓眉大眼，自带一种威严的气场。',
-      '清瘦的身材，深邃的眼神，仿佛能看透人心。',
-      '阳光帅气的外表下，藏着一颗细腻的心。'
-    ]
-    return appearances[Math.floor(Math.random() * appearances.length)]
-  }
-
-  const generateMotivation = () => {
-    const motivations = [
-      '追求真理和正义，希望通过自己的努力让世界变得更好。',
-      '渴望成功和认可，证明自己的价值和能力。',
-      '寻找生命的意义，探索未知的领域。',
-      '保护所爱之人，为家人创造更好的生活。',
-      '实现儿时的梦想，完成未竟的事业。',
-      '摆脱过去的阴影，重新找回自我。'
-    ]
-    return motivations[Math.floor(Math.random() * motivations.length)]
-  }
-
-  const generateConflict = () => {
-    const conflicts = [
-      '内心的理想与现实的差距，常常陷入两难的抉择。',
-      '过去的错误如同阴影，时刻影响着现在的判断。',
-      '责任与自由的冲突，不知该为家人还是为自己而活。',
-      '能力与野心的不匹配，渴望更多却力有不逮。',
-      '信任与背叛的循环，难以真正敞开心扉。',
-      '传统与创新的碰撞，在保守和突破间挣扎。'
-    ]
-    return conflicts[Math.floor(Math.random() * conflicts.length)]
-  }
-
-  const generateRelationships = () => {
-    const relationships = [
-      '有一个严厉但关心自己的父亲，关系复杂而微妙。',
-      '最好的朋友是从小一起长大的伙伴，彼此信任。',
-      '曾经深爱过的人现在成了最大的竞争对手。',
-      '独自抚养自己长大的母亲，是生命中最重要的存在。',
-      '有一个需要保护的妹妹，是她前进的动力。',
-      '遇到了改变一生的导师，亦师亦友的关系。'
-    ]
-    return relationships[Math.floor(Math.random() * relationships.length)]
-  }
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
+  const generateCharacter = async (type: 'random' | 'custom') => {
+    if (aiEnabled) {
+      await generateCharacterWithAI(type)
+    } else {
+      await generateCharacterLocally(type)
+    }
   }
 
   const downloadCharacter = () => {
     if (!character) return
     
-    const content = `角色设定：${character.name}
+    const content = `角色档案
+=======
+姓名：${character.name}
 年龄：${character.age}
 性别：${character.gender}
 职业：${character.occupation}
-性格特点：${character.personality.join('、')}
-外貌特征：${character.appearance}
-背景故事：${character.background}
-内在动机：${character.motivation}
-主要冲突：${character.conflict}
-人际关系：${character.relationships}
+
+性格特征：
+${character.personality.map(trait => `- ${trait}`).join('\n')}
+
+背景故事：
+${character.background}
+
+外貌描述：
+${character.appearance}
+
+角色动机：
+${character.motivation}
+
+主要冲突：
+${character.conflict}
+
+人际关系：
+${character.relationships}
 `
     
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${character.name}-角色设定.txt`
-    link.click()
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${character.name}_角色档案.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const copyCharacter = () => {
+    if (!character) return
+    
+    const content = `姓名：${character.name}
+年龄：${character.age}
+性别：${character.gender}
+职业：${character.occupation}
+性格特征：${character.personality.join('、')}
+背景故事：${character.background}
+外貌描述：${character.appearance}
+角色动机：${character.motivation}
+主要冲突：${character.conflict}
+人际关系：${character.relationships}`
+    
+    navigator.clipboard.writeText(content)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
-            AI角色生成器
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300">
-            为你的小说创作丰富立体的角色设定
-          </p>
-        </div>
+    <div className="container max-w-6xl py-8">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">角色创建器</h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          创建丰富、立体的小说角色
+        </p>
+      </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* 生成控制面板 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>生成设置</CardTitle>
-              <CardDescription>选择生成方式</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>自定义提示词（可选）</Label>
-                <Textarea
-                  placeholder="例如：一个神秘的古董店老板，年龄35岁..."
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value)}
-                  className="min-h-[100px]"
-                />
-              </div>
-              
-              <div className="flex gap-2">
-                <Button 
-                  onClick={() => generateCharacter('random')}
-                  disabled={loading}
-                  className="flex-1"
-                >
-                  {loading ? '生成中...' : '随机生成'}
-                </Button>
-                <Button 
-                  onClick={() => generateCharacter('custom')}
-                  disabled={loading}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  按提示生成
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      {!aiEnabled && (
+        <Alert variant="default" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            检测到您尚未配置AI模型，当前为演示模式。如需获得更智能的角色创建体验，请前往
+            <a href="/tools/settings" className="text-blue-600 hover:underline">设置页面</a>
+            配置AI模型。
+          </AlertDescription>
+        </Alert>
+      )}
 
-          {/* 角色展示 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>角色设定</CardTitle>
-              <CardDescription>生成的角色信息</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {character ? (
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                      <User className="w-10 h-10 text-white" />
-                    </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>生成角色</CardTitle>
+            <CardDescription>
+              {aiEnabled 
+                ? "使用AI创建个性化小说角色" 
+                : "使用本地算法创建基础角色（配置AI后可获得更佳体验）"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <Tabs defaultValue="random">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="random">随机生成</TabsTrigger>
+                <TabsTrigger value="custom">自定义生成</TabsTrigger>
+              </TabsList>
+              <TabsContent value="random" className="space-y-4 mt-4">
+                <Button 
+                  onClick={() => generateCharacter('random')} 
+                  disabled={loading}
+                  className="w-full"
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      生成中...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      生成随机角色
+                    </>
+                  )}
+                </Button>
+              </TabsContent>
+              <TabsContent value="custom" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="prompt">角色描述</Label>
+                  <Textarea
+                    id="prompt"
+                    value={customPrompt}
+                    onChange={(e) => setCustomPrompt(e.target.value)}
+                    placeholder="描述您想要创建的角色，例如：一个勇敢的年轻骑士，或一个神秘的魔法师..."
+                    rows={4}
+                  />
+                </div>
+                <Button 
+                  onClick={() => generateCharacter('custom')} 
+                  disabled={loading || !customPrompt.trim()}
+                  className="w-full"
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      生成中...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      生成自定义角色
+                    </>
+                  )}
+                </Button>
+              </TabsContent>
+            </Tabs>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>角色预览</CardTitle>
+            <CardDescription>
+              生成的角色将在此处显示
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {character ? (
+              <div className="space-y-6">
+                <div className="flex justify-between items-start">
+                  <div>
                     <h3 className="text-2xl font-bold">{character.name}</h3>
-                    <p className="text-gray-600 dark:text-gray-300">
-                      {character.age}岁 · {character.gender} · {character.occupation}
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <Badge variant="secondary">{character.age}岁</Badge>
+                      <Badge variant="secondary">{character.gender}</Badge>
+                      <Badge variant="secondary">{character.occupation}</Badge>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button variant="outline" size="sm" onClick={copyCharacter}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={downloadCharacter}>
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold mb-2">性格特征</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {character.personality.map((trait, index) => (
+                        <Badge key={index} variant="outline">{trait}</Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">背景故事</h4>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">
+                      {character.background}
                     </p>
                   </div>
 
-                  <Tabs defaultValue="basic" className="w-full">
-                    <TabsList className="grid w-full grid-cols-4">
-                      <TabsTrigger value="basic">基础</TabsTrigger>
-                      <TabsTrigger value="personality">性格</TabsTrigger>
-                      <TabsTrigger value="background">背景</TabsTrigger>
-                      <TabsTrigger value="story">故事</TabsTrigger>
-                    </TabsList>
-                    
-                    <TabsContent value="basic" className="space-y-2">
-                      <div><strong>外貌：</strong>{character.appearance}</div>
-                    </TabsContent>
-                    
-                    <TabsContent value="personality" className="space-y-2">
-                      <div className="flex flex-wrap gap-1">
-                        {character.personality.map((trait) => (
-                          <Badge key={trait} variant="secondary">{trait}</Badge>
-                        ))}
-                      </div>
-                    </TabsContent>
-                    
-                    <TabsContent value="background" className="space-y-2">
-                      <div><strong>背景：</strong>{character.background}</div>
-                    </TabsContent>
-                    
-                    <TabsContent value="story" className="space-y-2">
-                      <div><strong>动机：</strong>{character.motivation}</div>
-                      <div><strong>冲突：</strong>{character.conflict}</div>
-                      <div><strong>关系：</strong>{character.relationships}</div>
-                    </TabsContent>
-                  </Tabs>
+                  <div>
+                    <h4 className="font-semibold mb-2">外貌描述</h4>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">
+                      {character.appearance}
+                    </p>
+                  </div>
 
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={() => copyToClipboard(JSON.stringify(character, null, 2))}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <Copy className="w-4 h-4 mr-2" />
-                      复制
-                    </Button>
-                    <Button 
-                      onClick={downloadCharacter}
-                      size="sm"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      下载
-                    </Button>
-                    <Button 
-                      onClick={() => generateCharacter('random')}
-                      variant="ghost"
-                      size="sm"
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      重新生成
-                    </Button>
+                  <div>
+                    <h4 className="font-semibold mb-2">角色动机</h4>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">
+                      {character.motivation}
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">主要冲突</h4>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">
+                      {character.conflict}
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">人际关系</h4>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">
+                      {character.relationships}
+                    </p>
                   </div>
                 </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>点击上方按钮生成角色</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-96 text-gray-500">
+                <User className="h-16 w-16 mb-4" />
+                <p>尚未生成角色</p>
+                <p className="text-sm mt-2 text-center">
+                  {aiEnabled 
+                    ? "点击生成按钮创建您的小说角色" 
+                    : "点击生成按钮创建基础角色，配置AI后可获得更佳体验"}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
